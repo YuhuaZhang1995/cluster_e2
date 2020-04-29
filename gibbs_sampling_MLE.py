@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import scipy.optimize as opt
+from scipy.optimize import minimize
 import sys
 
 def llk(num_vertex,total_deg,k_deg,x):
@@ -47,7 +48,7 @@ obs=[]
 s1_list=[]
 s2_list=[]
 count_all={}
-with open(filename) as infile:
+with open("data_K_2.txt") as infile:
 	for line in infile:
 		remove_header=remove_header+1
 		s1=line.strip().split("\t")[0]
@@ -55,21 +56,21 @@ with open(filename) as infile:
 		#if change the sender, restart the loop
 		if remove_header>1:
 			obs.append([int(s1),int(s2)])
-			if not s1 in s1_list:
-				s1_list.append(s1)
-				count_all[s1]=1
+			if not int(s1) in s1_list:
+				s1_list.append(int(s1))
+				count_all[int(s1)]=1
 			else:
-				count_all[s1]+=1
-			if not s2 in s2_list:
-				s2_list.append(s2)
-				if not s2 in count_all:
-					count_all[s2]=1
+				count_all[int(s1)]+=1
+			if not int(s2) in s2_list:
+				s2_list.append(int(s2))
+				if not int(s2) in count_all:
+					count_all[int(s2)]=1
 			else:
-				count_all[s2]+=1
+				count_all[int(s2)]+=1
 infile.close()
 
 # Given value of alpha_zero and K
-alpha_zero=[1,1]
+alpha_zero=[0.1,0.1]
 K=2
 
 # Initialize B, alpha_C, theta_C
@@ -78,35 +79,41 @@ alpha_C=[0.1,0.1]
 theta_C=[1,1]
 
 # Initialize C_s
-N1=len(s1_list) #number of unique sender 1
-N2=len(s2_list) #number of unique sender 2
-C_s1=np.random.multinomial(N1,[0.5,0.5])
-C_s2=np.random.multinomial(N2,[0.5,0.5])
 N=len(count_all)
-C_s=np.random.multinomial(N,[0.5,0.5])
-s_list=count_all.keys()
-s_list=s_list.sort()
+C_s=[]
+for i in range(0,N):
+	C_s.append(np.where(np.random.multinomial(1,[0.5,0.5])==1)[0][0])
+C_s=np.array(C_s)
+s_list=list(count_all.keys())
+#s_list=list(map(int,s_list))
+s_list.sort()
 
 #Gibbs sampling
-for iter in range(0,100):
+for iter in range(0,50):
+	print([alpha_C,theta_C])
+	print(B)
 	#update C_s
 	for s in range(0,N):
 		tmp_p=np.zeros(K)
 		for k in range(0,K):
 			tmp_p[k]=(alpha_zero[k]+len(np.where(C_s==k)[0])-1)/(sum(alpha_zero)+len(C_s)-1)
+			#print(len(np.where(C_s==k)[0]))
 			#calculate P(S|C,alpha,theta)
 			p=(len(np.where(np.array(s_list)==s)[0])-alpha_C[k])/(len(s_list)+theta_C[k]) 
 			if p<0:
 				p=(N*alpha_C[k]+theta_C[k])/(len(s_list)+theta_C[k])
 			tmp_p[k]=tmp_p[k]*p
+		#print(sum(tmp_p))
 		tmp_p=np.array(tmp_p)/sum(tmp_p)
-		C_s[s]=np.random.multinomial(1,tmp_p)
+		#print(tmp_p)
+		C_s[s]=np.where(np.random.multinomial(1,tmp_p)==1)[0][0]
+	#print(C_s)
 	
 	#update alpha_c and theta_c
 	for k in range(0,K):
 		x0=[0.5,1]
 		num_vertex=len(np.where(C_s==k)[0])
-		s_tmp=s_list[np.where(C_s==k)[0]]
+		s_tmp=np.array(s_list)[np.where(C_s==k)[0]]
 		count_tmp= {tt: count_all[tt] for tt in s_tmp if tt in count_all}
 		count={}
 		for i in count_tmp.keys():
@@ -115,10 +122,12 @@ for iter in range(0,100):
 			else:
 				count[count_tmp[i]]=1
 
-		total_deg=sum(count_tmp.values())
+		total_deg=list(count_tmp.values())
+		#total_deg=list(map(int,total_deg))
+		total_deg=sum(total_deg)
 
-		alpha_C=get_llkoptim(num_vertex,total_deg,count,100,x0).x[0]
-		theta_C=get_llkoptim(num_vertex,total_deg,count,100,x0).x[1]
+		alpha_C[k]=get_llkoptim(num_vertex,total_deg,count,100,x0).x[0]
+		theta_C[k]=get_llkoptim(num_vertex,total_deg,count,100,x0).x[1]
 	
 	#update B
 	for i in range(0,K):
@@ -127,8 +136,8 @@ for iter in range(0,100):
 			count1=0
 			count2=0
 			for mm in obs:
-				s1=np.where(s_list==mm[0])
-				s2=np.where(s_list==mm[1])
+				s1=np.where(np.array(s_list)==mm[0])[0]
+				s2=np.where(np.array(s_list)==mm[1])[0]
 				if C_s[s1]==i:
 					count1+=1
 					if C_s[s2]==j:
