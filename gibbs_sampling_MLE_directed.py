@@ -49,12 +49,15 @@ s1_list=[]
 s2_list=[]
 count_all={}
 count_all1={}
+cluster_ass={}
 filename=sys.argv[1]
 with open(filename) as infile:
 	for line in infile:
 		remove_header=remove_header+1
 		s1=line.strip().split("\t")[0]
 		s2=line.strip().split("\t")[1]
+		cs1=line.strip().split("\t")[2]
+		cs2=line.strip().split("\t")[3]
 		#if change the sender, restart the loop
 		if remove_header>1:
 			obs.append([int(s1),int(s2)])
@@ -62,6 +65,7 @@ with open(filename) as infile:
 				s1_list.append(int(s1))
 				count_all[int(s1)]=1
 				count_all1[int(s1)]=1
+				cluster_ass[int(s1)]=int(cs1)
 			else:
 				count_all[int(s1)]+=1
 				count_all1[int(s1)]+=1
@@ -69,6 +73,8 @@ with open(filename) as infile:
 				s2_list.append(int(s2))
 				if not int(s2) in count_all:
 					count_all[int(s2)]=1
+				if not int(s2) in cluster_ass:
+					cluster_ass[int(s2)]=int(cs2)
 			else:
 				count_all[int(s2)]+=1
 infile.close()
@@ -91,6 +97,10 @@ C_s=np.array(C_s)
 s_list=list(count_all.keys())
 #s_list=list(map(int,s_list))
 s_list.sort()
+C_s=[]
+for key in sorted(cluster_ass.keys()):
+	C_s.append(cluster_ass[key])
+C_s=np.array(C_s)
 
 
 #Gibbs sampling
@@ -98,7 +108,7 @@ for iter in range(0,200):
 	print([alpha_C,theta_C])
 	print(B)
 	#update C_s
-	for s in range(0,N):
+	"""for s in range(0,N):
 		tmp_p=np.zeros(K)
 		for k in range(0,K):
 			tmp_p[k]=(alpha_zero[k]+len(np.where(C_s==k)[0])-1)/(sum(alpha_zero)+len(C_s)-1)
@@ -117,7 +127,7 @@ for iter in range(0,200):
 
 		tmp_p=np.array(tmp_p)/sum(tmp_p)
 		#print(tmp_p)
-		C_s[s]=np.where(np.random.multinomial(1,tmp_p)==1)[0][0]
+		C_s[s]=np.where(np.random.multinomial(1,tmp_p)==1)[0][0]"""
 	#print(C_s)
 	
 	#update alpha_c and theta_c
