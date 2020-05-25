@@ -47,7 +47,7 @@ a=[10,10] #Prior of theta
 b=[10,10] #prior of theta
 c=[1,1] #Prior of alpha 
 d=[1,1] #Prior of alpha
-Bb=np.matrix('0.9,0.1;0.1,0.9') #Prior of propensity matrix B
+Bb=np.matrix('90,10;10,90') #Prior of propensity matrix B
 
 # Initialize B, alpha_C, theta_C
 B=np.matrix('0.5,0.5;0.5,0.5')
@@ -103,29 +103,33 @@ for iter in range(0,100):
 	
 	#update alpha_c and theta_c
 	for k in range(0,K):
-		num_vertex=len(np.where(C_s==k)[0]) #Count the number of unique senders in cluster k
-		s_tmp=np.array(s_list)[np.where(C_s==k)[0]] #Get the sender list in cluster k
-		count_tmp= {tt: count_all[tt] for tt in s_tmp if tt in count_all} #Get the corresponding degrees
-		count={} #Total degrees
-		for i in count_tmp.keys():
-			if count_tmp[i] in count.keys():
-				count[count_tmp[i]]+=1
-			else:
-				count[count_tmp[i]]=1
+		if not len(np.where(C_s==k)[0])==0:
+			num_vertex=len(np.where(C_s==k)[0]) #Count the number of unique senders in cluster k
+			s_tmp=np.array(s_list)[np.where(C_s==k)[0]] #Get the sender list in cluster k
+			count_tmp= {tt: count_all[tt] for tt in s_tmp if tt in count_all} #Get the corresponding degrees
+			count={} #Total degrees
+			for i in count_tmp.keys():
+				if count_tmp[i] in count.keys():
+					count[count_tmp[i]]+=1
+				else:
+					count[count_tmp[i]]=1
 
-		total_deg=list(count_tmp.values())
-		total_deg=sum(total_deg)
-		x=np.random.beta(theta_C[k]+1,total_deg-1) #Latent X \sim Beta(theta+1,total degree-1)
-		y=0 #Latent Y \sim Bernoulli(theta-1/theta+alpha*i)
-		for i in range(0,len(s_tmp)-1):
-			y=y+np.random.binomial(1,(theta_C[k]/(theta_C[k]+alpha_C[k]*(i+1))))
-		z=0 #Latent z \sim bernoulli(j-1/j-alpha)
-		for i in count_tmp:
-			for j in range(0,count_tmp[i]-1):
-				z=z+1-np.random.binomial(1,(j/(j+1-alpha_C[k])))
-		#finally sampling of alpha and theta
-		alpha_C[k]=np.random.beta(c[k]+len(s_tmp)-1-y,d[k]+z)
-		theta_C[k]=np.random.gamma(y+a[k],1/(b[k]-np.log(x)))
+			total_deg=list(count_tmp.values())
+			total_deg=sum(total_deg)
+			x=np.random.beta(theta_C[k]+1,total_deg-1) #Latent X \sim Beta(theta+1,total degree-1)
+			y=0 #Latent Y \sim Bernoulli(theta-1/theta+alpha*i)
+			for i in range(0,len(s_tmp)-1):
+				y=y+np.random.binomial(1,(theta_C[k]/(theta_C[k]+alpha_C[k]*(i+1))))
+			z=0 #Latent z \sim bernoulli(j-1/j-alpha)
+			for i in count_tmp:
+				for j in range(0,count_tmp[i]-1):
+					z=z+1-np.random.binomial(1,(j/(j+1-alpha_C[k])))
+			#finally sampling of alpha and theta
+			alpha_C[k]=np.random.beta(c[k]+len(s_tmp)-1-y,d[k]+z)
+			theta_C[k]=np.random.gamma(y+a[k],1/(b[k]-np.log(x)))
+		else:
+			alpha_C[k]=0.5
+			theta_C[k]=1
 	
 	#update B
 	for i in range(0,K):
@@ -141,7 +145,7 @@ for iter in range(0,100):
 					count1+=1
 					if C_s[s2]==j:
 						count2+=1
-			tmp_alpha.append(count2/count1)
+			tmp_alpha.append(count2)
 		B[i,:]=np.random.dirichlet(tmp_alpha+np.array(Bb[i,:])[0],1)[0]
 				
 
